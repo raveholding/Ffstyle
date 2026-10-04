@@ -146,6 +146,34 @@
   .toast.ok{border-color:rgba(74,222,128,.5)}
   .toast.err{border-color:rgba(251,191,36,.5)}
 
+  /* Menú del dueño */
+  .owner-fab{position:fixed;left:18px;bottom:18px;width:44px;height:44px;border-radius:50%;border:1px solid var(--line);
+    background:rgba(14,14,18,.9);display:grid;place-items:center;cursor:pointer;z-index:15}
+  .owner-fab svg{width:18px;height:18px;stroke:var(--muted);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+  .owner-fab:hover svg,.owner-fab:focus-visible svg{stroke:var(--purple)}
+  .receipt{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-top:16px;padding:12px 14px;border-radius:14px;
+    background:rgba(255,255,255,.04);border:1px solid var(--line);font-size:.8rem;text-align:left}
+  .receipt[hidden]{display:none}
+  .receipt small{display:block;color:var(--muted);font-size:.66rem;letter-spacing:.1em;text-transform:uppercase}
+  .receipt button{flex:none;padding:10px 14px;border-radius:12px;border:1px solid var(--purple);background:transparent;color:#d8bdff;
+    font-weight:600;font-size:.78rem;cursor:pointer;font-family:inherit;min-height:44px}
+  .ownerform{display:grid;gap:10px;text-align:left;margin-bottom:6px}
+  .ownerform input[type=text],.ownerform input[type=tel]{width:100%;padding:13px 14px;border-radius:12px;border:1px solid var(--line);
+    background:var(--panel);color:var(--text);font-size:.92rem;font-family:inherit}
+  .ownerform .go{margin-top:2px;width:100%}
+  .rowbtns{display:grid;gap:8px;margin-bottom:10px}
+  .rowbtns button,.logitem button{padding:11px 14px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--text);
+    font-size:.82rem;font-weight:500;cursor:pointer;font-family:inherit;min-height:44px}
+  .rowbtns button:hover,.logitem button:hover{border-color:var(--purple)}
+  .counter h3{font-family:'Oswald',sans-serif;font-weight:500;letter-spacing:.1em;text-transform:uppercase;font-size:.85rem;color:var(--muted);margin:22px 0 10px;text-align:left}
+  #log{list-style:none;display:grid;gap:8px;text-align:left}
+  .logitem{padding:12px 14px;border-radius:14px;background:var(--panel);border:1px solid var(--line);font-size:.82rem}
+  .logitem b{display:block;font-size:.88rem}
+  .logitem span{color:var(--muted);font-size:.75rem}
+  .logitem .lb{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+  .logitem .lb button{min-height:40px;font-size:.76rem;padding:8px 12px}
+  #qrBox.dead{opacity:.2}
+
   /* Modo mostrador */
   .counter{position:fixed;inset:0;background:var(--bg);z-index:30;display:none;overflow:auto;padding:28px 16px}
   .counter.show{display:flex;justify-content:center}
@@ -189,6 +217,11 @@
 
     <div class="progress" aria-hidden="true"><i id="bar"></i></div>
     <p class="hint" id="hint"></p>
+
+    <div class="receipt" id="receipt" hidden>
+      <div><small>Último sello</small><b id="rcInfo"></b></div>
+      <button type="button" id="rcWa">Enviar al local</button>
+    </div>
 
     <div class="reward-box" id="reward">
       <b id="rTitle"></b>
@@ -242,20 +275,38 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<!-- Vista de mostrador (se abre con #mostrador) -->
-<div class="counter" id="counter" role="dialog" aria-label="Modo mostrador">
+<button class="owner-fab" id="ownerBtn" type="button" aria-label="Menú del dueño">
+  <svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+</button>
+
+<!-- Menú del dueño (también se abre con #mostrador) -->
+<div class="counter" id="counter" role="dialog" aria-label="Menú del dueño">
   <div class="box">
-    <h2>Modo mostrador</h2>
+    <h2>Menú del dueño</h2>
     <div id="pinStep">
       <p>Ingresá el PIN del local.</p>
       <input type="password" id="pin" inputmode="numeric" maxlength="6" autocomplete="off" aria-label="PIN">
       <br><button class="go" id="pinGo" type="button">Entrar</button>
     </div>
     <div id="qrStep" hidden>
-      <p>Que el cliente escanee este código. Cambia solo cada 45 segundos.</p>
-      <div id="qrBox"></div>
-      <div class="timer"><i id="tbar"></i></div>
+      <p>Sellar tarjeta: generá un QR para el cliente y dejá el registro en el WhatsApp del local.</p>
+      <div class="ownerform">
+        <input type="text" id="cName" placeholder="Nombre del cliente (opcional)" maxlength="40" autocomplete="off">
+        <input type="tel" id="cPhone" placeholder="WhatsApp del cliente (opcional, con código de área)" inputmode="tel" maxlength="20" autocomplete="off">
+        <button class="go" id="genQR" type="button">Generar QR de sello</button>
+      </div>
+      <div id="qrWrap" hidden>
+        <p id="qrMsg">Que el cliente escanee este código. Vence en 90 segundos.</p>
+        <div id="qrBox"></div>
+        <div class="timer"><i id="tbar"></i></div>
+        <div class="rowbtns">
+          <button id="toBiz" type="button">Guardar registro en WhatsApp del local</button>
+          <button id="toCli" type="button">Enviar al cliente por WhatsApp</button>
+        </div>
+      </div>
       <label><input type="checkbox" id="demo"> Modo demostración (sin límite de 24 h)</label>
+      <h3>Registro de sellos</h3>
+      <ul id="log"></ul>
     </div>
     <button class="x" id="closeCounter" type="button">Cerrar</button>
   </div>
@@ -274,6 +325,7 @@
     tokenTtlMs: 90 * 1000,       // vigencia del QR
     rotateMs: 45 * 1000,         // rotación del QR en mostrador
     cooldownMs: 24 * 3600 * 1000,// 1 sello cada 24 h por dispositivo
+    bizWa: '5493874033709',      // WhatsApp del local (registro de sellos)
     counterPin: '1234',          // DEMO: en producción se valida en el servidor
     storeKey: 'ftstyle_card_v1'
   };
@@ -284,6 +336,10 @@
   let state = load();
 
   const scissors = '<svg viewBox="0 0 24 24"><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><path d="M8 16 19 4M16 16 5 4"/></svg>';
+
+  const fmtDate = ts => new Date(ts).toLocaleString('es-AR', {timeZone:'America/Argentina/Salta', dateStyle:'short', timeStyle:'short'});
+  const codeOf = nonce => 'FT-' + nonce.slice(0, 6).toUpperCase();
+  const wa = (num, text) => window.open('https://wa.me/' + num + '?text=' + encodeURIComponent(text), '_blank', 'noopener');
 
   function toast(msg, kind){
     const t = $('toast'); t.className = 'toast show ' + (kind||'');
@@ -319,6 +375,9 @@
     $('reward').classList.toggle('show', !!rw);
     if (rw){ $('rTitle').textContent = rw.title; $('rText').textContent = rw.text; }
     $('redeem').hidden = state.stamps < CFG.totalStamps;
+    const rc = state.receipt;
+    $('receipt').hidden = !rc;
+    if (rc) $('rcInfo').textContent = 'Sello ' + rc.n + '/8 · ' + fmtDate(rc.ts) + ' · ' + rc.code;
   }
 
   /* ===== Validación del sello por QR =====
@@ -350,6 +409,7 @@
     if (!r.ok){ toast(r.msg, 'err'); return; }
     state.stamps++; state.last = Date.now();
     state.used = state.used.concat(r.nonce).slice(-30);
+    state.receipt = {code: codeOf(r.nonce), n: state.stamps, ts: state.last};
     save(state); render(state.stamps);
     if (navigator.vibrate) navigator.vibrate(60);
     toast(state.stamps === 4 ? '¡Sello 4! 30% de descuento en este corte.' : state.stamps === CFG.totalStamps ? '¡Tarjeta completa! Tu próximo corte es gratis.' : '¡Sello ' + state.stamps + ' sumado!', 'ok');
@@ -368,31 +428,84 @@
   /* ===== Canje del corte gratis (lo valida el barbero con el PIN) ===== */
   $('rGo').onclick = () => {
     if ($('rPin').value !== CFG.counterPin){ $('rPin').value = ''; toast('PIN incorrecto.', 'err'); return; }
-    state.stamps = 0; $('rPin').value = ''; save(state); render();
+    state.stamps = 0; state.receipt = null; $('rPin').value = ''; save(state); render();
     toast('Corte canjeado. ¡Empezás una tarjeta nueva!', 'ok');
   };
 
-  /* ===== Modo mostrador ===== */
-  let rot, tick;
+  /* ===== Comprobante del cliente → WhatsApp del local ===== */
+  $('rcWa').onclick = () => {
+    const rc = state.receipt; if (!rc) return;
+    wa(CFG.bizWa, '✂️ FT Style Barbería · Sello validado\nSello ' + rc.n + ' de 8\nFecha: ' + fmtDate(rc.ts) + '\nCódigo: ' + rc.code);
+  };
+
+  /* ===== Menú del dueño (PIN) ===== */
+  const LOGKEY = 'ftstyle_log_v1';
+  const loadLog = () => { try { return JSON.parse(localStorage.getItem(LOGKEY)) || []; } catch(e){ return []; } };
+  const saveLog = l => { try { localStorage.setItem(LOGKEY, JSON.stringify(l.slice(0, 50))); } catch(e){} };
+  let tick, current = null;
+
   function rand(n){ const a = new Uint8Array(n); crypto.getRandomValues(a); return Array.from(a,b=>b.toString(36).padStart(2,'0')).join('').slice(0,n); }
-  function drawQR(){
-    const base = location.origin === 'null' ? location.href.split(/[?#]/)[0] : location.origin + location.pathname;
-    const tok = Date.now().toString(36) + '.' + rand(10);
-    const url = base + '?s=' + tok + ($('demo').checked ? '&demo=1' : '');
-    const box = $('qrBox'); box.innerHTML = '';
-    new QRCode(box, {text:url, width:240, height:240, colorDark:'#000000', colorLight:'#ffffff', correctLevel:QRCode.CorrectLevel.M});
-    const t0 = Date.now(); clearInterval(tick);
-    tick = setInterval(() => { $('tbar').style.width = Math.max(0, 100 - (Date.now()-t0)/CFG.rotateMs*100) + '%'; }, 250);
+  function normPhone(p){
+    let d = (p || '').replace(/\D/g, ''); if (!d) return '';
+    if (d.startsWith('54')) return d;
+    return '549' + d.replace(/^0/, '');
   }
-  function openCounter(){ $('counter').classList.add('show'); $('pinStep').hidden = false; $('qrStep').hidden = true; $('pin').value=''; setTimeout(()=>$('pin').focus(),50); }
-  function closeCounter(){ $('counter').classList.remove('show'); clearInterval(rot); clearInterval(tick); if (location.hash === '#mostrador') history.replaceState(null,'',location.pathname+location.search); }
+  const receiptText = e => '✂️ FT Style Barbería · Comprobante de sello\nCliente: ' + (e.name || 'Sin nombre') +
+    '\nFecha: ' + fmtDate(e.ts) + '\nCódigo: ' + e.code +
+    '\nSello emitido por QR en el local.\n4.º corte: 30% OFF · 8 sellos: corte gratis.';
+
+  function renderLog(){
+    const ul = $('log'); ul.replaceChildren();
+    const l = loadLog();
+    if (!l.length){ const li = document.createElement('li'); li.className = 'logitem'; li.textContent = 'Todavía no hay sellos registrados.'; ul.append(li); return; }
+    l.forEach(e => {
+      const li = document.createElement('li'); li.className = 'logitem';
+      const b = document.createElement('b'); b.textContent = (e.name || 'Sin nombre') + ' · ' + e.code;
+      const s = document.createElement('span'); s.textContent = fmtDate(e.ts) + (e.phone ? ' · +' + e.phone : '');
+      const row = document.createElement('div'); row.className = 'lb';
+      const b1 = document.createElement('button'); b1.type = 'button'; b1.textContent = 'WhatsApp del local';
+      b1.onclick = () => wa(CFG.bizWa, receiptText(e));
+      row.append(b1);
+      if (e.phone){ const b2 = document.createElement('button'); b2.type = 'button'; b2.textContent = 'Enviar al cliente'; b2.onclick = () => wa(e.phone, receiptText(e)); row.append(b2); }
+      li.append(b, s, row); ul.append(li);
+    });
+  }
+
+  function genQR(){
+    const base = location.origin === 'null' ? location.href.split(/[?#]/)[0] : location.origin + location.pathname;
+    const nonce = rand(10), ts = Date.now();
+    const url = base + '?s=' + ts.toString(36) + '.' + nonce + ($('demo').checked ? '&demo=1' : '');
+    const box = $('qrBox'); box.innerHTML = ''; box.classList.remove('dead');
+    new QRCode(box, {text:url, width:240, height:240, colorDark:'#000000', colorLight:'#ffffff', correctLevel:QRCode.CorrectLevel.M});
+    current = {code: codeOf(nonce), ts, name: $('cName').value.trim().slice(0, 40), phone: normPhone($('cPhone').value)};
+    const l = loadLog(); l.unshift(current); saveLog(l); renderLog();
+    $('qrWrap').hidden = false; $('toCli').hidden = !current.phone;
+    $('qrMsg').textContent = 'Que el cliente escanee este código. Vence en 90 segundos.';
+    clearInterval(tick);
+    tick = setInterval(() => {
+      const left = 100 - (Date.now() - ts) / CFG.tokenTtlMs * 100;
+      $('tbar').style.width = Math.max(0, left) + '%';
+      if (left <= 0){ clearInterval(tick); box.classList.add('dead'); $('qrMsg').textContent = 'QR vencido. Generá uno nuevo.'; }
+    }, 250);
+  }
+  $('genQR').onclick = genQR;
+  $('toBiz').onclick = () => current && wa(CFG.bizWa, receiptText(current));
+  $('toCli').onclick = () => current && current.phone && wa(current.phone, receiptText(current));
+
+  function openCounter(){
+    $('counter').classList.add('show'); $('pinStep').hidden = false; $('qrStep').hidden = true; $('qrWrap').hidden = true;
+    $('pin').value = ''; setTimeout(() => $('pin').focus(), 50);
+  }
+  function closeCounter(){
+    $('counter').classList.remove('show'); clearInterval(tick);
+    if (location.hash === '#mostrador') history.replaceState(null, '', location.pathname + location.search);
+  }
   $('pinGo').onclick = () => {
-    if ($('pin').value !== CFG.counterPin){ $('pin').value=''; $('pin').focus(); return; }
-    $('pinStep').hidden = true; $('qrStep').hidden = false; drawQR();
-    clearInterval(rot); rot = setInterval(drawQR, CFG.rotateMs);
+    if ($('pin').value !== CFG.counterPin){ $('pin').value = ''; $('pin').focus(); return; }
+    $('pinStep').hidden = true; $('qrStep').hidden = false; renderLog();
   };
   $('pin').addEventListener('keydown', e => { if (e.key === 'Enter') $('pinGo').click(); });
-  $('demo').onchange = drawQR;
+  $('ownerBtn').onclick = openCounter;
   $('closeCounter').onclick = closeCounter;
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCounter(); });
   if (location.hash === '#mostrador') openCounter();

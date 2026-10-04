@@ -146,6 +146,29 @@
   .toast.ok{border-color:rgba(74,222,128,.5)}
   .toast.err{border-color:rgba(251,191,36,.5)}
 
+  /* Datos del cliente */
+  .holder{color:#d8bdff!important;font-weight:500}
+  .holder[hidden]{display:none}
+  .pform{display:grid;gap:10px}
+  .pform[hidden],#pView[hidden]{display:none}
+  .pform input[type=text],.pform input[type=tel],.pform input[type=date]{width:100%;padding:13px 14px;border-radius:12px;border:1px solid var(--line);
+    background:#0a0a0f;color:var(--text);font-size:.92rem;font-family:inherit;color-scheme:dark}
+  .pform .pl{display:grid;gap:6px;font-size:.74rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+  .pform .chk{display:flex;gap:10px;align-items:flex-start;font-size:.78rem;color:#b9b4c8;line-height:1.45}
+  .pform .chk input{margin-top:3px;width:18px;height:18px;accent-color:var(--purple2);flex:none}
+  .perr{color:var(--warn);font-size:.8rem}
+  .perr[hidden]{display:none}
+  .pbtn{padding:13px;border-radius:14px;border:none;background:var(--purple2);color:#fff;font-weight:600;font-size:.92rem;cursor:pointer;font-family:inherit;min-height:48px}
+  .pline{display:grid;gap:2px;font-size:.92rem;margin-bottom:12px}
+  .pline span{color:var(--muted);font-size:.8rem}
+  .prow{display:flex;gap:8px;flex-wrap:wrap}
+  .prow button{padding:10px 16px;border-radius:12px;border:1px solid var(--line);background:#0a0a0f;color:var(--text);font-size:.82rem;font-family:inherit;cursor:pointer;min-height:44px}
+  .prow button:hover{border-color:var(--purple)}
+  .logedit{display:grid;gap:8px;margin-top:6px}
+  .logedit input{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:#0a0a0f;color:var(--text);font-size:.88rem;font-family:inherit}
+  .logitem .danger{border-color:rgba(251,191,36,.4);color:var(--warn)}
+  #clearLog{margin-top:10px;width:100%;padding:11px;border-radius:12px;border:1px solid rgba(251,191,36,.35);background:transparent;color:var(--warn);font-size:.8rem;cursor:pointer;font-family:inherit;min-height:44px}
+
   /* Menú del dueño */
   .owner-fab{position:fixed;left:18px;bottom:18px;width:44px;height:44px;border-radius:50%;border:1px solid var(--line);
     background:rgba(14,14,18,.9);display:grid;place-items:center;cursor:pointer;z-index:15}
@@ -209,6 +232,7 @@
       <div>
         <h2>Tarjeta de sellos</h2>
         <small>4.º corte: 30% OFF · 8 sellos: corte gratis</small>
+        <small class="holder" id="holder" hidden></small>
       </div>
       <div class="count"><b id="n">0</b><span>/8</span></div>
     </div>
@@ -233,7 +257,23 @@
     </div>
   </section>
 
-  <section class="how">
+  <section class="how" id="profile" aria-label="Mis datos">
+    <h3>Completá tu tarjeta</h3>
+    <form id="pForm" class="pform" novalidate autocomplete="off">
+      <input type="text" id="pName" placeholder="Nombre y apellido" maxlength="40" aria-label="Nombre y apellido">
+      <input type="tel" id="pPhone" placeholder="WhatsApp (con código de área, sin 0 ni 15)" inputmode="tel" maxlength="20" aria-label="WhatsApp">
+      <label class="pl">Cumpleaños (opcional)<input type="date" id="pBirth"></label>
+      <label class="chk"><input type="checkbox" id="pOk"><span>Acepto que FT Style Barbería guarde estos datos para mi tarjeta de sellos y me escriba por WhatsApp (Ley 25.326). Puedo pedir que los borren cuando quiera.</span></label>
+      <p class="perr" id="pErr" role="alert" hidden></p>
+      <button class="pbtn" type="submit">Guardar mis datos</button>
+    </form>
+    <div id="pView" hidden>
+      <div class="pline"><b id="vName"></b><span id="vPhone"></span></div>
+      <div class="prow"><button type="button" id="pEdit">Editar</button><button type="button" id="pDel">Borrar mis datos</button></div>
+    </div>
+  </section>
+
+  <section class="how" style="margin-top:16px">
     <h3>Cómo sumar un sello</h3>
     <ol>
       <li>Al pagar tu corte, pedí el QR en el mostrador.</li>
@@ -307,6 +347,7 @@
       <label><input type="checkbox" id="demo"> Modo demostración (sin límite de 24 h)</label>
       <h3>Registro de sellos</h3>
       <ul id="log"></ul>
+      <button id="clearLog" type="button">Borrar todo el registro</button>
     </div>
     <button class="x" id="closeCounter" type="button">Cerrar</button>
   </div>
@@ -376,6 +417,7 @@
     if (rw){ $('rTitle').textContent = rw.title; $('rText').textContent = rw.text; }
     $('redeem').hidden = state.stamps < CFG.totalStamps;
     const rc = state.receipt;
+    renderProfile();
     $('receipt').hidden = !rc;
     if (rc) $('rcInfo').textContent = 'Sello ' + rc.n + '/8 · ' + fmtDate(rc.ts) + ' · ' + rc.code;
   }
@@ -432,10 +474,45 @@
     toast('Corte canjeado. ¡Empezás una tarjeta nueva!', 'ok');
   };
 
+  /* ===== Datos del cliente (se guardan solo en su celular) ===== */
+  const fmtBirth = s => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ''); return m ? m[3] + '/' + m[2] : ''; };
+  function renderProfile(){
+    const pr = state.profile;
+    $('pForm').hidden = !!pr; $('pView').hidden = !pr;
+    $('holder').hidden = !pr;
+    if (pr){
+      $('holder').textContent = 'Titular: ' + pr.name;
+      $('vName').textContent = pr.name;
+      $('vPhone').textContent = '+' + pr.phone + (pr.birth ? ' · Cumpleaños ' + fmtBirth(pr.birth) : '');
+    }
+  }
+  $('pForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const name = $('pName').value.trim().replace(/\s+/g, ' '), phone = normPhone($('pPhone').value), birth = $('pBirth').value;
+    const err = m => { $('pErr').textContent = m; $('pErr').hidden = false; };
+    if (name.length < 2 || !/^[\p{L}' .-]+$/u.test(name)) return err('Ingresá tu nombre y apellido.');
+    if (phone.length < 12 || phone.length > 15) return err('Revisá el WhatsApp: con código de área, sin 0 ni 15.');
+    if (birth && !/^\d{4}-\d{2}-\d{2}$/.test(birth)) return err('La fecha de cumpleaños no es válida.');
+    if (!$('pOk').checked) return err('Para guardar tus datos tenés que aceptar el consentimiento.');
+    $('pErr').hidden = true;
+    state.profile = {name: name.slice(0, 40), phone, birth: birth || '', ts: Date.now()};
+    save(state); renderProfile(); toast('Datos guardados. ¡Tu tarjeta ya es tuya!', 'ok');
+  });
+  $('pEdit').onclick = () => {
+    const pr = state.profile || {};
+    $('pName').value = pr.name || ''; $('pPhone').value = pr.phone ? '+' + pr.phone : ''; $('pBirth').value = pr.birth || ''; $('pOk').checked = true;
+    $('pForm').hidden = false; $('pView').hidden = true; $('pName').focus();
+  };
+  $('pDel').onclick = () => {
+    if (!confirm('¿Borrar tus datos de esta tarjeta? Tus sellos se mantienen.')) return;
+    state.profile = null; save(state); $('pForm').reset(); renderProfile(); toast('Tus datos fueron borrados.', 'ok');
+  };
+
   /* ===== Comprobante del cliente → WhatsApp del local ===== */
   $('rcWa').onclick = () => {
     const rc = state.receipt; if (!rc) return;
-    wa(CFG.bizWa, '✂️ FT Style Barbería · Sello validado\nSello ' + rc.n + ' de 8\nFecha: ' + fmtDate(rc.ts) + '\nCódigo: ' + rc.code);
+    const pr = state.profile;
+    wa(CFG.bizWa, '✂️ FT Style Barbería · Sello validado\n' + (pr ? 'Cliente: ' + pr.name + '\nWhatsApp: +' + pr.phone + '\n' : '') + 'Sello ' + rc.n + ' de 8\nFecha: ' + fmtDate(rc.ts) + '\nCódigo: ' + rc.code);
   };
 
   /* ===== Menú del dueño (PIN) ===== */
@@ -454,22 +531,49 @@
     '\nFecha: ' + fmtDate(e.ts) + '\nCódigo: ' + e.code +
     '\nSello emitido por QR en el local.\n4.º corte: 30% OFF · 8 sellos: corte gratis.';
 
+  let editing = null;
+  const mkBtn = (t, fn, cls) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = t; if (cls) b.className = cls; b.onclick = fn; return b; };
   function renderLog(){
     const ul = $('log'); ul.replaceChildren();
     const l = loadLog();
+    $('clearLog').hidden = !l.length;
     if (!l.length){ const li = document.createElement('li'); li.className = 'logitem'; li.textContent = 'Todavía no hay sellos registrados.'; ul.append(li); return; }
     l.forEach(e => {
       const li = document.createElement('li'); li.className = 'logitem';
       const b = document.createElement('b'); b.textContent = (e.name || 'Sin nombre') + ' · ' + e.code;
       const s = document.createElement('span'); s.textContent = fmtDate(e.ts) + (e.phone ? ' · +' + e.phone : '');
-      const row = document.createElement('div'); row.className = 'lb';
-      const b1 = document.createElement('button'); b1.type = 'button'; b1.textContent = 'WhatsApp del local';
-      b1.onclick = () => wa(CFG.bizWa, receiptText(e));
-      row.append(b1);
-      if (e.phone){ const b2 = document.createElement('button'); b2.type = 'button'; b2.textContent = 'Enviar al cliente'; b2.onclick = () => wa(e.phone, receiptText(e)); row.append(b2); }
-      li.append(b, s, row); ul.append(li);
+      li.append(b, s);
+      if (editing === e.code){
+        const f = document.createElement('div'); f.className = 'logedit';
+        const n = document.createElement('input'); n.type = 'text'; n.maxLength = 40; n.value = e.name || ''; n.placeholder = 'Nombre del cliente'; n.setAttribute('aria-label', 'Nombre del cliente');
+        const t = document.createElement('input'); t.type = 'tel'; t.value = e.phone ? '+' + e.phone : ''; t.placeholder = 'WhatsApp del cliente'; t.setAttribute('aria-label', 'WhatsApp del cliente');
+        const row = document.createElement('div'); row.className = 'lb';
+        row.append(
+          mkBtn('Guardar', () => {
+            const all = loadLog(), k = all.find(x => x.code === e.code);
+            if (k){ k.name = n.value.trim().slice(0, 40); k.phone = normPhone(t.value); saveLog(all); if (current && current.code === k.code) current = k; }
+            editing = null; renderLog(); toast('Registro actualizado.', 'ok');
+          }),
+          mkBtn('Cancelar', () => { editing = null; renderLog(); })
+        );
+        f.append(n, t, row); li.append(f);
+      } else {
+        const row = document.createElement('div'); row.className = 'lb';
+        row.append(mkBtn('WhatsApp del local', () => wa(CFG.bizWa, receiptText(e))));
+        if (e.phone) row.append(mkBtn('Enviar al cliente', () => wa(e.phone, receiptText(e))));
+        row.append(
+          mkBtn('Editar', () => { editing = e.code; renderLog(); }),
+          mkBtn('Borrar', () => {
+            if (!confirm('¿Borrar este registro (' + e.code + ')?')) return;
+            saveLog(loadLog().filter(x => x.code !== e.code)); renderLog();
+          }, 'danger')
+        );
+        li.append(row);
+      }
+      ul.append(li);
     });
   }
+  $('clearLog').onclick = () => { if (confirm('¿Borrar TODO el registro de sellos de este dispositivo?')){ saveLog([]); editing = null; renderLog(); } };
 
   function genQR(){
     const base = location.origin === 'null' ? location.href.split(/[?#]/)[0] : location.origin + location.pathname;
@@ -502,7 +606,7 @@
   }
   $('pinGo').onclick = () => {
     if ($('pin').value !== CFG.counterPin){ $('pin').value = ''; $('pin').focus(); return; }
-    $('pinStep').hidden = true; $('qrStep').hidden = false; renderLog();
+    $('pinStep').hidden = true; $('qrStep').hidden = false; editing = null; renderLog();
   };
   $('pin').addEventListener('keydown', e => { if (e.key === 'Enter') $('pinGo').click(); });
   $('ownerBtn').onclick = openCounter;
